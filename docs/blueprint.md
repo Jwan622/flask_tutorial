@@ -125,3 +125,56 @@ There are a few differences from the register view:
 3. `session` is a dict that stores data across requests. When validation succeeds, the user’s id is stored in a new session. The data is stored in a cookie that is sent to the browser, and the browser then sends it back with subsequent requests. Flask securely signs the data so that it can’t be tampered with.
 
 Now that the user’s id is stored in the session, it will be available on subsequent requests. At the beginning of each request, if a user is logged in their information should be loaded and made available to other views.
+
+```python3
+@bp.before_app_request
+def load_logged_in_user():
+    user_id = session.get('user_id')
+
+    if user_id is None:
+        g.user = None
+    else:
+        g.user = get_db().execute(
+            'SELECT * FROM user WHERE id = ?', (user_id,)
+        ).fetchone()
+```
+
+`bp.before_app_request()` registers a function that runs before the view function, no matter what URL is requested. load_logged_in_user checks if a user id is stored in the session and gets that user’s data from the database, storing it on g.user, which lasts for the length of the request. If there is no user id, or if the id doesn’t exist, g.user will be None.
+
+### Logout
+
+To log out, you need to remove the user id from the session. Then `load_logged_in_user` won’t load a user on subsequent requests.
+
+
+```python3
+@bp.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('index'))
+```
+
+
+## Requiring auth on other views
+
+Creating, editing, and deleting blog posts will require a user to be logged in. A decorator can be used to check this for each view it’s applied to.
+
+```python3
+def login_required(view):
+    @functools.wraps(view)
+    def wrapped_view(**kwargs):
+        if g.user is None:
+            return redirect(url_for('auth.login'))
+
+        return view(**kwargs)
+
+    return wrapped_view
+```
+
+
+## Endpoints and urls
+
+The `url_for()` function generates the URL to a view based on a name and arguments. The name associated with a view is also called the endpoint, and by default it’s the same as the name of the view function.
+
+For example, the `hello()` view that was added to the app factory earlier in the tutorial has the name 'hello' and can be linked to with `url_for('hello')`. If it took an argument, which you’ll see later, it would be linked to using `url_for('hello', who='World')`.
+
+When using a blueprint, the name of the blueprint is prepended to the name of the function, so the endpoint for the login function you wrote above is `'auth.login'` because you added it to the 'auth' blueprint.
