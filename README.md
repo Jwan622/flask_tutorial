@@ -11,4 +11,4 @@ Various notes I took on Flask are in the docs section. They can be seen here:
 
 - [Setting up db](./docs/db)
 - [What are flask blueprints](./docs/blueprint.md)
-
+- [static files in flask](./docs/static.md)
